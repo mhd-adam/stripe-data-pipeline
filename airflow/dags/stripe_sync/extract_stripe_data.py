@@ -135,7 +135,7 @@ def sync_stripe(config: dict, project_id: str, dataset: str, bucket_name: str) -
 
 with models.DAG(
         "stripe_sync_data",
-        schedule_interval="50 * * * *",
+        schedule_interval="30 1 * * *",
         default_args={
             'owner': 'airflow',
             "catchup": False,
