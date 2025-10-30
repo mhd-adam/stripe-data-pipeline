@@ -1,0 +1,14 @@
+stripe_data:
+  target: dev
+  outputs:
+    dev:
+      type: bigquery
+      method: oauth
+      project: dev_project
+      dataset: stripe_data
+    # optionally, add staging target
+    prod:
+      type: bigquery
+      method: oauth
+      project: prod_project
+      dataset: stripe_data

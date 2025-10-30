@@ -1,0 +1,19 @@
+version: 2
+sources:
+ - name: stripe_data
+   tables:
+     - name: subscriptions_staging
+       external:
+         location: "gs://path/to/subscriptions/*"
+         options:
+           format: json
+     - name: subscription_updates_staging
+       external:
+         location: "gs://path/to/subscription_updates/*"
+         options:
+           format: json
+     - name: invoices_staging
+       external:
+         location: "gs://path/to/invoices/*"
+         options:
+           format: json
