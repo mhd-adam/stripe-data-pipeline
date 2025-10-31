@@ -32,7 +32,7 @@ Another approach to this is partition the data in GCS and read the latest partit
 The benefit of this approach is we can archive historical data in GCS to reduce cost. 
 However, this requires more complex logic to read the latest partition in the staging layer.
 
-### Models
+### Models and Schema Design
 
 #### Staging Layer
 Raw JSON data from GCS external tables, stored as-is with minimal transformation.
@@ -42,7 +42,26 @@ Raw JSON data from GCS external tables, stored as-is with minimal transformation
 - **`stg_subscription_updates`** - Latest subscription updates from GCS (JSON as-is)
 
 #### Curated Layer
-THis layer contains the curated models that are used to build the final fact tables.
+This layer contains the curated models that are used to build the final fact tables.
+
+The invoice line items are **normalized** (flattened from nested JSON arrays into separate rows) for the following reasons:
+
+
+- **Granular Revenue Recognition**: Revenue recognition happens at the **line item level**, not the invoice level.
+Each line item has its own service period (`period.start` and `period.end`), amount, and tax treatment
+A single invoice can contain multiple line items with different service periods.
+It makes sense to normalized the line items to allow each item to be independently processed through the revenue recognition logic.
+
+- **Simplified Query Logic**: Downstream models (marts layer) can directly join on `line_item_id` without complex JSON parsing or UNNEST operations.
+Enables efficient filtering, aggregation, and analysis at the line item level.
+Improves query **performance** by avoiding repeated JSON extraction in every downstream query.
+
+- **Clearer Data Lineage**: The transformation from nested JSON to normalized rows happens once in the curated layer.
+All downstream models work with clean, typed columns instead of JSON extraction.
+Makes the data models easier to track and maintain.
+
+The normalization is performed in `invoice_line_items.sql`.
+
 ![Curated Models Schema](curated_models_schema.png)
 
 #### Marts Layer
@@ -68,15 +87,6 @@ For a service item **SI** with amount **M** spanning a service period of **S** t
 Revenue is recognized daily over the service period, with deferred revenue decreasing proportionally as time progresses.
 
 ![img.png](revenue_recognition.png)
-
-### Tax Handling
-- Extracts tax data from JSON fields
-- Separates tax-inclusive vs tax-exclusive amounts
-- Calculates revenue excluding tax
-
-### Currency Normalization
-- Converts all amounts to USD using exchange rates
-- Enables cross-currency revenue aggregation
 
 ## Idempotency and Data Quality
 
