@@ -101,5 +101,5 @@ SELECT
 
     CURRENT_TIMESTAMP() AS _loaded_at
 
-FROM revenue_schedule
+FROM daily_revenue
 
