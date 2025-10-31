@@ -34,6 +34,7 @@ However, this requires more complex logic to read the latest partition in the st
 
 ### Models
 
+
 #### Staging Layer
 - `stg_invoices` - Latest invoices from GCS
 - `stg_subscriptions` - Latest subscriptions from GCS
