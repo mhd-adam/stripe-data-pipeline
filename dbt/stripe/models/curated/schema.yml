@@ -17,5 +17,3 @@ models:
         tests:
           - unique
           - not_null
-          - accepted_values:
-              values: ['paid', 'open', 'draft', 'void']

@@ -78,3 +78,44 @@ Revenue is recognized daily over the service period, with deferred revenue decre
 ### Currency Normalization
 - Converts all amounts to USD using exchange rates
 - Enables cross-currency revenue aggregation
+
+## Example Queries
+
+### Total Deferred Revenue as of Today
+```sql
+SELECT
+    SUM(deferred_revenue_usd) AS total_deferred_revenue_usd
+FROM deferred_revenue
+WHERE as_of_date = CURRENT_DATE()
+```
+
+### Deferred Revenue by Customer
+```sql
+SELECT
+    customer_id,
+    SUM(deferred_revenue_usd) AS total_deferred_revenue_usd
+FROM deferred_revenue
+WHERE as_of_date = CURRENT_DATE()
+GROUP BY customer_id
+ORDER BY total_deferred_revenue_usd DESC
+```
+
+### Deferred Revenue Trend Over Time
+```sql
+SELECT
+    as_of_date,
+    SUM(deferred_revenue_usd) AS total_deferred_revenue_usd
+FROM deferred_revenue
+GROUP BY as_of_date
+ORDER BY as_of_date
+```
+
+### Recognized Revenue for Q2 2025
+```sql
+SELECT
+    SUM(f.recognized_revenue_usd) AS total_recognized_revenue_usd
+FROM fct_recognized_revenue_daily f
+JOIN calendar c ON f.recognition_date = c.date_day
+WHERE c.year = 2025
+  AND c.quarter_of_year = '2'
+```

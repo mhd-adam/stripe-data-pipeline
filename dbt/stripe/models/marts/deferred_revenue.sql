@@ -24,24 +24,31 @@ calendar AS (
 revenue_calculated AS (
     SELECT  
         *,
+
+        -- amount without tax
         CASE 
             WHEN is_tax_inclusive THEN amount - tax_amount
             ELSE amount
         END AS amount_without_tax,
 
+        -- amount with tax
         CASE 
             WHEN is_tax_inclusive THEN amount
             ELSE amount + tax_amount
         END AS amount_with_tax
+
     FROM line_items
 ),
 
 rate_exchanged AS (
     SELECT 
         rc.*,
+
+        -- convert amounts and taxes to USD, or any currency of choice
         rc.amount_without_tax * er.exchange_rate AS amount_without_tax_usd,
         rc.amount_with_tax * er.exchange_rate AS amount_with_tax_usd,
         rc.tax_amount * er.exchange_rate AS tax_amount_usd
+
     FROM revenue_calculated rc
     JOIN exchange_rates er 
         ON rc.currency = er.from_currency 
@@ -51,12 +58,16 @@ rate_exchanged AS (
 service_period_calculated AS (
     SELECT  
         *,
+        -- effective service period
         DATE_DIFF(period_end_date, period_start_date, DAY) AS effective_service_period_days,
+
+        -- daily revenue amount
         CASE
             WHEN DATE_DIFF(period_end_date, period_start_date, DAY) > 0 THEN
                 amount_without_tax_usd / DATE_DIFF(period_end_date, period_start_date, DAY)
             ELSE amount_without_tax_usd
         END AS daily_revenue_usd
+
     FROM rate_exchanged
 ),
 
@@ -76,19 +87,21 @@ deferred_revenue_by_date AS (
         spc.period_start_date,
         spc.period_end_date,
         spc.effective_service_period_days,
-        
+
         spc.daily_revenue_usd,
         
         spc.invoice_created_date,
         spc.invoice_created_at,
-        
+
+        -- deferred revenue
         CASE
             WHEN cal.date_day < spc.period_start_date THEN spc.amount_without_tax_usd
             WHEN cal.date_day >= spc.period_end_date THEN 0
             ELSE 
                 spc.daily_revenue_usd * DATE_DIFF(spc.period_end_date, cal.date_day, DAY)
         END AS deferred_revenue_usd,
-        
+
+        -- recognized revenue
         CASE
             WHEN cal.date_day < spc.period_start_date THEN 0
             WHEN cal.date_day >= spc.period_end_date THEN spc.amount_without_tax_usd
@@ -98,9 +111,15 @@ deferred_revenue_by_date AS (
 
     FROM service_period_calculated spc
     CROSS JOIN calendar cal
-    WHERE cal.date_day >= spc.invoice_created_date
-        -- as of today
-        AND cal.date_day <= CURRENT_DATE()
+
+    -- invoice created (all deferred revenue, no recognized revenue)
+    -- service start (some deferred revenue, some recognized revenue)
+    -- service end (no deferred revenue, all recognized revenue)
+    WHERE
+     -- use invoice created date as the start of calculations
+    cal.date_day >= spc.invoice_created_date
+    -- use service end date as the end date of calculations
+        AND cal.date_day <= spc.period_end_date
 )
 
 SELECT
