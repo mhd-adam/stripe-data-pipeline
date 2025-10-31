@@ -16,7 +16,7 @@ It is kept as simple as possible to focus on the core requirements in the techni
 
 ### Data Flow
 
-![img.png](data_flow_diagram.png)
+![img.png](data_flow_diagram.jpg)
 
 **GCS → Staging → Curated → Marts**
 
