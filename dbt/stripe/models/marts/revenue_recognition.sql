@@ -57,7 +57,7 @@ SELECT  *,
         ) AS effective_service_period_days,
 
         CASE
-            --todo, this is not optimal, find reasons why (end-start) could be <=0
+            --todo, this is addressed in the invoice_line_items model
             WHEN DATE_DIFF(period_end_date,period_start_date,DAY) > 0 THEN
                 amount_without_tax_usd / DATE_DIFF(period_end_date,period_start_date,DAY)
             ELSE amount_without_tax_usd

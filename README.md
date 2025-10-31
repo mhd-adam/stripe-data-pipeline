@@ -9,7 +9,7 @@ This is a demo pipeline for Stripe revenue recognition. It is built on top of th
 - DBT
 
 
-Please note that this is a complete solution but rather a demo of what the pipeline could look like.
+Please note that this is **not** a complete solution but rather a demo of what the pipeline could look like.
 It is kept as simple as possible to focus on the core requirements in the technical document.
 
 ## Architecture
@@ -25,6 +25,13 @@ It is kept as simple as possible to focus on the core requirements in the techni
 3. **Curated**: Incremental processing with business logic
 4. **Marts**: Final fact tables for analytics and reporting
 
+Each DAG run will extract the data from Stripe and load it to GCS. The write mode is overwrite on GCS so DBT can read the latest data into the staging layer. 
+The staging layer will keep the historical data.
+
+Another approach to this is partition the data in GCS and read the latest partition in the staging layer. 
+The benefit of this approach is we can archive historical data in GCS to reduce cost. 
+However, this requires more complex logic to read the latest partition in the staging layer.
+
 ### Models
 
 #### Staging Layer
@@ -33,8 +40,8 @@ It is kept as simple as possible to focus on the core requirements in the techni
 - `stg_subscription_updates` - Latest subscription updates from GCS
 
 #### Curated Layer
-- `int_invoice_line_items` - Extracts and flattens line items from invoices
-- `int_revenue_recognition_schedule` - Tax calculations, currency normalization, daily revenue schedule
+- `invoice_line_items` - Extracts and flattens line items from invoices
+- `revenue_recognition_schedule` - Tax calculations, currency normalization, daily revenue schedule
 - `calendar` - Date dimension
 - `exchange_rates` - Currency conversion rates
 - `invoices` - Invoice dimension

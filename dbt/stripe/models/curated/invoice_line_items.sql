@@ -29,7 +29,7 @@ flattened_lines AS (
         line_item
     FROM source s,
     UNNEST(JSON_EXTRACT_ARRAY(s.lines, '$.data')) AS line_item
-    WHERE s.status = 'paid' -- there's a filter in the source query, leaving this here for reference
+    WHERE s.status = 'paid' -- there's a filter in the source Stripe query, leaving this here for reference
 ),
 
 transformed AS (
@@ -98,6 +98,22 @@ SELECT
         COALESCE(period_start_date, invoice_created_date),
         DAY
     ) AS service_period_days,
+
+    CASE
+    WHEN period_end_date IS NOT NULL THEN period_end_date
+
+    -- TODO: options (need more info):
+    -- 1. Infer from subscription's billing period
+    -- 2. Read the invoice's end date, although invoice end date might not always be service item end date
+    -- 3. Consider one-time charges as 1 day service period (below)
+    ELSE
+        -- Last resort: assume one-time charge (same day)
+        -- use 1 day as service period to include the line item in revenue recognition
+        DATE_ADD(period_start_date, INTERVAL 1 DAY)
+END AS period_end_date_inferred,
+
+    -- Flag to indicate if we used fallback
+    period_end_date IS NULL AS is_missing_period_end,
 
     CURRENT_TIMESTAMP() AS _loaded_at
 
