@@ -96,6 +96,8 @@ def pull_stripe_endpoint(endpoint, params: dict, max_retries: int = 50) -> list:
                 print(f"Rate limit hit during pagination. Retry {retry_count}/{max_retries} after {delay}s delay.")
                 time.sleep(delay)
             except Exception as e:
+
+                ## all data, or none
                 print(f"Unexpected error: {e}.")
                 raise
 

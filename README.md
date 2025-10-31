@@ -79,6 +79,89 @@ Revenue is recognized daily over the service period, with deferred revenue decre
 - Converts all amounts to USD using exchange rates
 - Enables cross-currency revenue aggregation
 
+## Idempotency and Data Quality
+
+### Idempotency Strategy
+
+The pipeline is designed to be idempotent at multiple levels, ensuring that re-running the same data produces consistent results without duplicates or data corruption.
+
+#### 1. Extraction Layer (Airflow)
+- **Incremental Extraction**: Each Stripe endpoint tracks the last extracted timestamp using BigQuery queries
+  - Query: `SELECT MAX(CAST(created AS INT64)) FROM {table}`
+  - Only fetches records created after the last successful extraction
+  - On first run or table not found, defaults to timestamp 0 (fetches all historical data)
+- **Overwrite Strategy**: Raw data in GCS is overwritten on each DAG run
+  - Ensures GCS always contains the latest snapshot (of the last run)
+  - Prevents accumulation of duplicate files
+  - Staging layer in BQ maintains historical records, not GCS
+- **Rate Limit Handling**: Exponential backoff with retry logic prevents partial loads
+  - Up to 50 (random number in this case) retries with exponential delay (2^retry_count seconds)
+  - Ensures all data, or none => failure
+
+#### 2. Staging Layer (DBT)
+ - Loads the data as is from the external table (the batch of the last run)
+ - Incremental load with `merge` strategy to handle reprocessing of the same data based on the resource id
+
+#### 3. Curated Layer (DBT)
+- **Incremental Materialization**: All curated models use `incremental` strategy with `merge`
+  - `unique_key`: Primary key for each model (e.g., `invoice_id`, `subscription_id`)
+  - Incremental load with `merge` strategy to handle reprocessing of the same data based on the resource id
+  - Only processes new data based on the max created timestamp
+  ```sql
+   SELECT * FROM {{ ref('stg_invoices') }}
+    {% if is_incremental() %}
+    WHERE created_at_date > (SELECT MAX(created_at_date) FROM {{ this }})
+    {% endif %}
+  ```
+
+
+#### 4. Marts Layer (DBT)
+- Composite Unique Keys for deferred revenue which uses `line_item_id` + `as_of_date` combinations to prevents duplicate revenue recognition for the same line item on the same date
+- Incremental load with `merge` strategy to handle reprocessing of the same data based on the composite key
+
+### Data Quality Controls
+
+#### 1. Schema Validation
+- **DBT Tests**: Automated tests on critical fields
+  - `not_null` tests on primary keys and revenue amounts
+  - `unique` tests on primary keys
+  - More can be added ..
+
+
+- **Type Casting**: Explicit type conversions prevent data type errors
+  - Stripe timestamps converted to BigQuery TIMESTAMP and DATE types
+  - Amounts divided by 100 and cast to FLOAT64 as Stripe stores cents as integers
+
+#### 2. Business Logic Validation
+- **Service Period Validation**: Handles missing or invalid period dates
+  - Checks for null `period_end_date` and infers from subscription or defaults to 1-day period
+  - Prevents division by zero in daily revenue calculations
+  - See `invoice_line_items.sql` lines 102-113 for fallback logic
+
+
+- **Tax Calculation Validation**: Handles multiple tax scenarios
+  - Distinguishes between tax-inclusive and tax-exclusive amounts
+  - Handles null tax fields, and defaults to tax-exclusive (0 tax) if no tax data is available
+
+#### 3. Data Freshness Monitoring
+- **Timestamp Tracking**: All models include `_loaded_at` timestamp to enables monitoring of when data was last refreshed.
+- **Incremental Load Tracking**: Staging models track `created_at` from Stripe. This can be compared against Stripe API to detect missing data.
+#### 4. Custom Data Quality Tests
+
+Custom test in `dbt/stripe/tests/missing_period_end_threshold.sql`
+  - Alerts if more than 3% of paid invoice line items have missing period_end dates
+  - Prevents silent data quality degradation
+
+Possible enhancements:
+  - Test for negative revenue amounts (e.g., negative line items for discounts, refunds..etc)
+  - Test for orphaned line items (invoice not in staging)
+  - Test for missing currency exchange rates
+  - Test for calendar date gaps
+
+#### 5. Monitoring and Alerting
+ `on_failure_callback` in Airflow DAGS sends alerts when a pipeline fails.
+
+
 ## Example Queries
 
 ### Total Deferred Revenue as of Today
