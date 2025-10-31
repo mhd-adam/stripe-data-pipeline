@@ -18,7 +18,7 @@ exchange_rates AS (
 ),
 
 calendar AS (
-    SELECT calendar_date FROM {{ ref('calendar') }}
+    SELECT date_day FROM {{ ref('calendar') }}
 ),
 
 revenue_calculated AS (
@@ -63,7 +63,7 @@ SELECT  *,
             ELSE amount_without_tax_usd
             END AS daily_revenue_usd
         )
-FROM exchange_rate
+FROM rate_exchanged
 
 ),
 
@@ -74,7 +74,7 @@ SELECT  spc.line_item_id,
         spc.customer_id,
         spc.subscription_id,
 
-        cal.date_day AS revenue_date,
+        cal.date_day AS recognition_date,
 
         spc.currency,
         spc.amount_without_tax,
@@ -91,7 +91,7 @@ SELECT  spc.line_item_id,
 
 FROM service_period_calculated spc
 join calendar cal on cal.date_day >= spc.period_start_date
-    and cal.date_date < spc.service_period_end
+    and cal.date_day < spc.period_end_date
         -- todo, could there be a negative item amount due to refund?
         -- todo, do we need to filter on amount >0?
 )
