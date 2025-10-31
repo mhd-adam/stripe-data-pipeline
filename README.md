@@ -34,22 +34,21 @@ However, this requires more complex logic to read the latest partition in the st
 
 ### Models
 
-
 #### Staging Layer
-- `stg_invoices` - Latest invoices from GCS
-- `stg_subscriptions` - Latest subscriptions from GCS
-- `stg_subscription_updates` - Latest subscription updates from GCS
+Raw JSON data from GCS external tables, stored as-is with minimal transformation.
+
+- **`stg_invoices`** - Latest invoices from GCS (JSON as-is)
+- **`stg_subscriptions`** - Latest subscriptions from GCS (JSON as-is)
+- **`stg_subscription_updates`** - Latest subscription updates from GCS (JSON as-is)
 
 #### Curated Layer
-- `invoice_line_items` - Extracts and flattens line items from invoices
-- `revenue_recognition_schedule` - Tax calculations, currency normalization, daily revenue schedule
-- `calendar` - Date dimension
-- `exchange_rates` - Currency conversion rates
-- `invoices` - Invoice dimension
+THis layer contains the curated models that are used to build the final fact tables.
+![Curated Models Schema](curated_models_schema.png)
 
 #### Marts Layer
-- `fct_recognized_revenue_daily` - Daily recognized revenue
-- `fct_deferred_revenue` - Deferred revenue tracking
+This layer contains the final fact tables for analytics and reporting.
+![Deferred Revenue Schema](deferred_revenue_schema.png)
+
 
 ## Revenue Recognition Logic
 
