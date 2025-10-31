@@ -1,0 +1,21 @@
+version: 2
+
+models:
+  - name: calendar
+    description: Calendar table for revenue recognition
+    columns:
+      - name: calendar_date
+        description: Calendar date
+        tests:
+          - unique
+          - not_null
+  - name: invoices
+    description: Invoices with relevant fields extracted
+    columns:
+      - name: invoice_id
+        description: Unique identifier for the invoice
+        tests:
+          - unique
+          - not_null
+          - accepted_values:
+              values: ['paid', 'open', 'draft', 'void']

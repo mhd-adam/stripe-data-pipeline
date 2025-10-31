@@ -14,21 +14,24 @@ STRIPE_ENDPOINTS = [
         'timestamp_sql': "SELECT MAX(CAST(created AS INT64)) FROM `{project}.{dataset}.subscriptions`",
         'endpoint': stripe.Subscription,
         'params': {'limit': 100, 'status': 'all', 'created': {'gte': 0}},
-        'filename': 'subscriptions/subscriptions.json'
+        'filename': 'subscriptions/subscriptions.json',
+        'start_latency_seconds': 0  # to respect rate limits, stagger the calls
     },
     {
         'task_name': 'subscription_updates',
         'timestamp_sql': "SELECT MAX(CAST(created AS INT64)) FROM `{project}.{dataset}.subscription_updates`",
         'endpoint': stripe.Event,
         'params': {'type': 'customer.subscription.*', 'limit': 100, 'created': {'gte': 0}},
-        'filename': 'subscription_updates/subscription_updates.json'
+        'filename': 'subscription_updates/subscription_updates.json',
+        'start_latency_seconds': 10
     },
     {
         'task_name': 'invoices',
         'timestamp_sql': "SELECT MAX(CAST(created AS INT64)) FROM `{project}.{dataset}.invoices`",
         'endpoint': stripe.Invoice,
         'params': {'limit': 100, 'status': 'paid', 'created': {'gte': 0}},
-        'filename': 'invoices/invoices.json'
+        'filename': 'invoices/invoices.json',
+        'start_latency_seconds': 20
     }
 ]
 
