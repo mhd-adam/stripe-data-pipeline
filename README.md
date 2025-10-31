@@ -1,14 +1,28 @@
 # Stripe Revenue Recognition Pipeline
 
+This is a demo pipeline for Stripe revenue recognition. It is built on top of the following tools:
+
+- Stripe API
+- Google Cloud Storage
+- Google BigQuery
+- Airflow
+- DBT
+
+
+Please note that this is a complete solution but rather a demo of what the pipeline could look like.
+It is kept as simple as possible to focus on the core requirements in the technical document.
+
 ## Architecture
 
 ### Data Flow
 
+![img.png](data_flow_diagram.png)
+
 **GCS → Staging → Curated → Marts**
 
-1. **GCS**: Raw Stripe data stored in Google Cloud Storage
-2. **Staging**: Pulls latest data from GCS (replaced on each DAG run)
-3. **Curated**: Incremental processing, builds historical data with business logic
+1. **GCS**: Raw Stripe data stored in Google Cloud Storage (replaced on each DAG run)
+2. **Staging**: Pulls latest data from GCS builds historical data
+3. **Curated**: Incremental processing with business logic
 4. **Marts**: Final fact tables for analytics and reporting
 
 ### Models
@@ -31,45 +45,28 @@
 
 ## Revenue Recognition Logic
 
+To recognize revenue, we need to understand the service period of each line item. 
+This allows us to calculate the daily revenue recognition schedule. 
+
+The following digram illustrates the logic for revenue recognition.
+
+For a service item **SI** with amount **M** spanning a service period of **S** to **E**, with (**E** - **S**) representing the total number of days:
+- **Service Start (S)** to **Service End (E)** defines the total service period
+- **Before Service Start**: Deferred Revenue = M, Recognized Revenue = 0
+- **During Service Period**:
+  - Recognized Revenue = X * M / (E - S), where X is number of days recognized
+  - Deferred Revenue = Y * M / (E - S), where Y is remaining days of service
+- **After Service End**: Deferred Revenue = 0, Recognized Revenue = M
+
+Revenue is recognized daily over the service period, with deferred revenue decreasing proportionally as time progresses.
+
+![img.png](revenue_recognition.png)
+
 ### Tax Handling
 - Extracts tax data from JSON fields
 - Separates tax-inclusive vs tax-exclusive amounts
-- Calculates revenue excluding tax (tax is not revenue)
+- Calculates revenue excluding tax
 
 ### Currency Normalization
 - Converts all amounts to USD using exchange rates
 - Enables cross-currency revenue aggregation
-
-### Revenue Recognition
-- Items with service periods > 31 days are recognized daily over the period
-- Daily revenue = Total amount / Service period days
-- Calendar join generates one row per recognition date
-
-## Setup
-
-### Prerequisites
-- Google Cloud Platform account
-- BigQuery dataset
-- Stripe API key
-- Python 3.8+
-- DBT installed
-
-### Configuration
-1. Set up GCS buckets for Stripe data
-2. Configure BigQuery external tables in `models/external_tables.yml`
-3. Update Stripe API key in extraction scripts
-4. Configure DBT profiles for BigQuery connection
-
-## Running the Pipeline
-
-### Data Extraction
-```bash
-python scripts/extract_stripe_data.py
-```
-
-### DBT Models
-```bash
-dbt run
-dbt test
-```
-
