@@ -206,7 +206,7 @@ ORDER BY as_of_date
 ```sql
 SELECT
     SUM(f.recognized_revenue_usd) AS total_recognized_revenue_usd
-FROM fct_recognized_revenue_daily f
+FROM recognized_revenue f
 JOIN calendar c ON f.recognition_date = c.date_day
 WHERE c.year = 2025
   AND c.quarter_of_year = '2'
