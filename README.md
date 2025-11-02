@@ -205,7 +205,7 @@ ORDER BY as_of_date
 ### Recognized Revenue for Q2 2025
 ```sql
 SELECT
-    SUM(f.recognized_revenue_usd) AS total_recognized_revenue_usd
+    SUM(f.daily_revenue_usd) AS total_recognized_revenue_usd
 FROM recognized_revenue f
 JOIN calendar c ON f.recognition_date = c.date_day
 WHERE c.year = 2025
